@@ -6,11 +6,11 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import api.model.ApiResponseEntity
 
 class UserEntity(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<UserEntity>(UserTable)
+    companion object : IntEntityClass<UserEntity>(UsersTable)
 
-    var username by UserTable.username
-    var password by UserTable.password
-    var name by UserTable.name
+    var username by UsersTable.username
+    var password by UsersTable.password
+    var name by UsersTable.name
     //val userToken: List<UserToken>,
     //val userApiState: List<UserApiState>
 

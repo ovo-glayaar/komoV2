@@ -5,11 +5,11 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 
 class ApiResponseEntity(id: EntityID<Int>): IntEntity(id) {
-    companion object : IntEntityClass<ApiResponseEntity>(ApiResponseTable)
+    companion object : IntEntityClass<ApiResponseEntity>(ApiResponsesTable)
 
-    var api by ApiEntity referencedOn ApiResponseTable.api
+    var api by ApiEntity referencedOn ApiResponsesTable.api
 
-    var code by ApiResponseTable.code
-    var type by ApiResponseTable.type
-    var response by ApiResponseTable.response
+    var code by ApiResponsesTable.code
+    var type by ApiResponsesTable.type
+    var response by ApiResponsesTable.response
 }

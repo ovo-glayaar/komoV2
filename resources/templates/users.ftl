@@ -1,6 +1,6 @@
 <#import "template.ftl" as layout />
-<@layout.mainLayout title="Users" header="Users">
-<table class="table">
+<@layout.mainLayout title="User List">
+<table class="table" style="width: 95%" border="1">
     <thead class="thead-dark">
         <tr>
             <th scope="col">Username</th>
@@ -14,7 +14,7 @@
     <tr>
         <td>${user.username}</td>
         <td>${user.name}</td>
-        <td>${user.userToken.token}</td>
+        <td>${user.token}</td>
         <td>
             <a href="/user/edit?id=${user.id}" class="btn btn-secondary float-right mr-2" role="button">Edit</a>
             <a href="/user/delete?id=${user.id}" class="btn btn-danger float-right mr-2" role="button">Delete</a>

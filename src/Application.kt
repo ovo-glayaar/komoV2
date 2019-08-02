@@ -66,7 +66,13 @@ fun Application.module() {
         static("/users/static") {
             resources("static")
         }
+    }
 
+    setApiRoute(apiDao)
+
+    setUserRoute(userDao, apiDao)
+
+    routing {
         route("/index") {
             get {
                 val params = mapOf("title" to "Main Page")
@@ -91,10 +97,6 @@ fun Application.module() {
             }
         }
     }
-
-    setApiRoute(apiDao)
-
-    setUserRoute(userDao, apiDao)
 }
 
 data class IndexData(val items: List<Int>)

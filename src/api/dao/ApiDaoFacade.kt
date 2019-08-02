@@ -2,7 +2,7 @@ package api.dao
 
 import api.model.ApiEntity
 import api.model.ApiResponseEntity
-import api.model.ApiTable
+import api.model.ApisTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.deleteWhere
@@ -23,7 +23,7 @@ interface ApiDaoFacade : Closeable {
 class ApiDaoFacadeImpl(private val database: Database) : ApiDaoFacade {
 
     override fun init() = transaction(database) {
-        SchemaUtils.create(ApiTable)
+        SchemaUtils.create(ApisTable)
     }
 
     override fun createApi(name: String, url: String, codeResponses: List<String>) = transaction(database) {
@@ -53,7 +53,7 @@ class ApiDaoFacadeImpl(private val database: Database) : ApiDaoFacade {
     }
 
     override fun deleteApi(id: Int) = transaction(database) {
-        ApiTable.deleteWhere { ApiTable.id eq id }
+        ApisTable.deleteWhere { ApisTable.id eq id }
         Unit
     }
 

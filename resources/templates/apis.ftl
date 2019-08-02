@@ -1,6 +1,6 @@
 <#import "template.ftl" as layout />
-<@layout.mainLayout title="API List" header="API List">
-<table class="table">
+<@layout.mainLayout title="API List">
+<table class="table" style="width: 95%" border="1">
     <thead class="thead-dark">
         <tr>
             <th scope="col">Name</th>
