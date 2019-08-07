@@ -17,12 +17,14 @@ import user.model.UserTokensTable
 
 interface UserDaoFacade {
     fun init()
-    fun createUser(username: String, password: String, name: String, apiStates: List<Int>)
-    fun updateUser(id: Int, username: String, password: String, name: String, token: String, apiStates: List<Int>)
+    fun createUser(username: String, password: String, name: String, phone: String, apiStates: List<Int>)
+    fun updateUser(id: Int, username: String, password: String, name: String, phone: String, token: String, apiStates: List<Int>)
     fun deleteUser(id: Int)
     fun getUser(id: Int): UserModel?
     fun getAllUsers(): List<UserModel>
     fun getResponseByUser(token: String, url: String): String?
+    fun getResponseByPhone(phone: String, url: String): String?
+    fun updateTokenByPhone(phone: String, token: String)
 }
 
 class UserDaoFacadeImpl(private val database: Database,
@@ -39,17 +41,28 @@ class UserDaoFacadeImpl(private val database: Database,
         if(result != null) result[ApiResponsesTable.response] else null
     }
 
+    override fun getResponseByPhone(phone: String, url: String): String? = transaction(database) {
+        val result = UsersTable.join(UserApiStatesTable, JoinType.INNER, additionalConstraint = {UsersTable.id eq UserApiStatesTable.user})
+            .join(ApiResponsesTable, JoinType.INNER, additionalConstraint = {UserApiStatesTable.apiresponse eq ApiResponsesTable.id})
+            .join(ApisTable, JoinType.INNER, additionalConstraint = {ApiResponsesTable.api eq ApisTable.id})
+            .slice(UsersTable.phone, ApisTable.url, ApiResponsesTable.response)
+            .select { UsersTable.phone eq phone and (ApisTable.url eq url) }.firstOrNull()
+
+        if(result != null) result[ApiResponsesTable.response] else null
+    }
+
     override fun init() = transaction(database) {
         SchemaUtils.create(UsersTable)
     }
 
-    override fun createUser(username: String, password: String, name: String, apiStates: List<Int>) = transaction(database) {
+    override fun createUser(username: String, password: String, name: String, phone: String, apiStates: List<Int>) = transaction(database) {
         UserEntity.new {
             this.username = username
             this.password = password
             this.name = name
+            this.phone = phone
 
-            apiStates.mapNotNull { apiDaoFacade.getApiResponse(it) }.toList().let {
+            apiStates.mapNotNull { apiDaoFacade.getRawApiResponse(it) }.toList().let {
                 this.apiStates = SizedCollection(it)
             }
         }
@@ -57,13 +70,24 @@ class UserDaoFacadeImpl(private val database: Database,
         Unit
     }
 
-    override fun updateUser(id: Int, username: String, password: String, name: String, token: String, apiStates: List<Int>) = transaction(database) {
+    override fun updateTokenByPhone(phone: String, token: String) {
+        UserEntity.find{ UsersTable.phone eq phone }.firstOrNull()?.also  {
+            UserTokenEntity.new {
+                this.user = it
+                this.token = token
+            }
+        }
+
+        Unit
+    }
+
+    override fun updateUser(id: Int, username: String, password: String, name: String, phone: String, token: String, apiStates: List<Int>) = transaction(database) {
         UserEntity.findById(id)?.apply {
             this.username = username
             this.password = password
             this.name = name
 
-            apiStates.mapNotNull { apiDaoFacade.getApiResponse(it) }.toList().let {
+            apiStates.mapNotNull { apiDaoFacade.getRawApiResponse(it) }.toList().let {
                 this.apiStates = SizedCollection(it)
             }
         }?.also {

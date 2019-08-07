@@ -38,6 +38,7 @@ fun Application.setUserRoute(userDao: UserDaoFacade, apiDao: ApiDaoFacade) {
                             postParameters["username"].orEmpty(),
                             postParameters["password"].orEmpty(),
                             postParameters["name"].orEmpty(),
+                            postParameters["phone"].orEmpty(),
                             "",
                             postParameters.getAll("ApiState")?.map { it.toInt() }?.toList().orEmpty())
 
@@ -57,6 +58,7 @@ fun Application.setUserRoute(userDao: UserDaoFacade, apiDao: ApiDaoFacade) {
                 userDao.createUser(postParameters["username"].orEmpty(),
                         postParameters["password"].orEmpty(),
                         postParameters["name"].orEmpty(),
+                        postParameters["phone"].orEmpty(),
                         postParameters.getAll("ApiState")?.map { it.toInt() }?.toList() ?: listOf())
 
                 call.respond(FreeMarkerContent("users.ftl", mapOf("users" to userDao.getAllUsers())))

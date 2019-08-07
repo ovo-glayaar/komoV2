@@ -8,6 +8,7 @@ object UsersTable : IntIdTable() {
     val username = varchar("username", 50)
     val password = varchar("password", 50)
     val name = varchar("name", 50)
+    val phone = varchar("phone", 15)
 }
 
 object UserApiStatesTable : Table() {

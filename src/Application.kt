@@ -10,10 +10,12 @@ import io.ktor.features.*
 import io.ktor.freemarker.FreeMarker
 import io.ktor.freemarker.FreeMarkerContent
 import io.ktor.http.ContentType
+import io.ktor.http.Parameters
 import io.ktor.http.content.TextContent
 import io.ktor.http.content.resources
 import io.ktor.http.content.static
 import io.ktor.request.path
+import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.routing.get
 import io.ktor.routing.route
@@ -83,6 +85,41 @@ fun Application.module() {
         route("{path...}") {
             get("/") {
                 val action = call.parameters.getAll("path")?.joinToString(separator = "/")
+                var response = "{ \"status\": \"FAIL\" }"
+                action?.takeIf { it.isNotBlank() }?.let {
+                    when (action) {
+                        "login" -> {
+
+                            //val phone = call.request.queryParameters["phone"]
+
+                            //val postParameters: Parameters = call.receiveParameters()
+                            //val phone = postParameters["phone"]
+
+                            val phone = "08131234567890"
+                            response = userDao.getResponseByPhone(phone, action).orEmpty()
+                        }
+                        "assignToken" -> {
+                            //val token = call.request.headers.get("Authorization").orEmpty()
+                            val token = "user_a||123456||02"
+
+                            val phone = "08131234567890"
+
+                            userDao.updateTokenByPhone(token, phone)
+
+                            response = userDao.getResponseByPhone(phone, action).orEmpty()
+                        }
+                        else -> {
+                            //val token = call.request.headers.get("Authorization").orEmpty()
+                            val token = "user_a||123456||02"
+                            val sessionId = call.request.headers.get("cs-session-id").orEmpty()
+
+                            response = userDao.getResponseByUser(token, action).orEmpty()
+                        }
+                    }
+                }
+
+                call.respond(TextContent(response, ContentType.Application.Json))
+
                 if (action != null) {
 
                     //val token = call.request.headers.get("Authorization").orEmpty()

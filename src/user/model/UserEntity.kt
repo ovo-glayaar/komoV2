@@ -11,6 +11,7 @@ class UserEntity(id: EntityID<Int>) : IntEntity(id) {
     var username by UsersTable.username
     var password by UsersTable.password
     var name by UsersTable.name
+    var phone by UsersTable.phone
     //val userToken: List<UserToken>,
     //val userApiState: List<UserApiState>
 
