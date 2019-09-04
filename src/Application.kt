@@ -18,6 +18,7 @@ import io.ktor.request.path
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.routing.get
+import io.ktor.routing.post
 import io.ktor.routing.route
 import io.ktor.routing.routing
 import io.ktor.server.netty.EngineMain
@@ -27,6 +28,7 @@ import org.ovo.mockserver.user.dao.UserDaoFacade
 import org.ovo.mockserver.user.dao.UserDaoFacadeImpl
 import org.ovo.mockserver.user.router.setUserRoute
 import org.slf4j.event.Level
+import java.util.*
 
 fun main(args: Array<String>): Unit = EngineMain.main(args)
 
@@ -83,53 +85,65 @@ fun Application.module() {
         }
 
         route("{path...}") {
-            get("/") {
+            post("/") {
                 val action = call.parameters.getAll("path")?.joinToString(separator = "/")
                 var response = "{ \"status\": \"FAIL\" }"
+
                 action?.takeIf { it.isNotBlank() }?.let {
                     when (action) {
-                        "login" -> {
+                        "v2.0/api/auth/customer/login2FA" -> {
+                            //val token = call.request.headers["Authorization"].orEmpty()
+                            //val token = "user_a||123456||02"
 
-                            //val phone = call.request.queryParameters["phone"]
+                            val postParameters: Parameters = call.receiveParameters()
+                            val phone = postParameters["mobile"].orEmpty()
 
-                            //val postParameters: Parameters = call.receiveParameters()
-                            //val phone = postParameters["phone"]
-
-                            val phone = "08131234567890"
-                            response = userDao.getResponseByPhone(phone, action).orEmpty()
-                        }
-                        "assignToken" -> {
-                            //val token = call.request.headers.get("Authorization").orEmpty()
-                            val token = "user_a||123456||02"
-
-                            val phone = "08131234567890"
+                            //val phone = "08131234567890"
+                            //Generate new token
+                            val STRING_LENGTH = 10
+                            val charPool: List<Char> = ('a'..'z') + ('A'..'Z') + ('0'..'9')
+                            val token = (1..STRING_LENGTH)
+                                .map { _ -> kotlin.random.Random.nextInt(0, charPool.size) }
+                                .map(charPool::get)
+                                .joinToString("")
 
                             userDao.updateTokenByPhone(token, phone)
 
-                            response = userDao.getResponseByPhone(phone, action).orEmpty()
+                            //response = userDao.getResponseByPhone(phone, action).orEmpty()
+                            response = "{\"refId\":\"$token\"}"
+                        }
+                        "v2.0/api/auth/customer/login2FA/verify" -> {
+                            val postParameters: Parameters = call.receiveParameters()
+                            val refId = postParameters["refId"].orEmpty()
+
+                            userDao.getUserByToken(refId)?.let {
+                                response = "{\"mobile\":\"${it.phone}\",\"email\":\"${it.username}\",\"fullName\":\"${it.name}\"," +
+                                        "\"isEmailVerified\":true,\"isSecurityCodeSet\":true,\"updateAccessToken\":\"$refId\"}"
+                            }
+                        }
+                        "v2.0/api/auth/customer/loginSecurityCode/verify" -> {
+                            val postParameters: Parameters = call.receiveParameters()
+                            val accessToken = postParameters["updateAccessToken"].orEmpty()
+
+                            userDao.getUserByToken(accessToken)?.let {
+                                val now = Calendar.getInstance().timeInMillis / 1000
+                                val expired = Calendar.getInstance().apply {
+                                    set(this.get(Calendar.YEAR) + 1, this.get(Calendar.MONTH), this.get(Calendar.DATE))
+                                }.timeInMillis / 1000
+
+                                response = "{\"token\":\"$accessToken\",\"tokenSeed\":\"$accessToken\",\"timeStamp\":$now,\"tokenSeedExpiredAt\":$expired," +
+                                        "\"displayMessage\":null,\"email\":\"${it.username}\",\"fullName\":\"${it.name}\",\"isEmailVerified\":true," +
+                                        "\"isSecurityCodeSet\":true,\"updateAccessToken\":\"@accessToken\"}"
+                            }
                         }
                         else -> {
-                            //val token = call.request.headers.get("Authorization").orEmpty()
-                            val token = "user_a||123456||02"
-                            val sessionId = call.request.headers.get("cs-session-id").orEmpty()
+
+                            val token = call.request.headers["Authorization"].orEmpty()
 
                             response = userDao.getResponseByUser(token, action).orEmpty()
+
                         }
                     }
-                }
-
-                call.respond(TextContent(response, ContentType.Application.Json))
-
-                if (action != null) {
-
-                    //val token = call.request.headers.get("Authorization").orEmpty()
-                    val token = "user_a||123456||02"
-                    val sessionId = call.request.headers.get("cs-session-id").orEmpty()
-
-
-                    val response = userDao.getResponseByUser(token, action).orEmpty()
-                    //TODO: implement logic
-                    call.respond(TextContent(response, ContentType.Application.Json))
                 }
             }
         }
