@@ -9,18 +9,18 @@ import io.ktor.application.install
 import io.ktor.features.*
 import io.ktor.freemarker.FreeMarker
 import io.ktor.freemarker.FreeMarkerContent
+import io.ktor.gson.GsonConverter
+import io.ktor.gson.gson
 import io.ktor.http.ContentType
 import io.ktor.http.Parameters
 import io.ktor.http.content.TextContent
 import io.ktor.http.content.resources
 import io.ktor.http.content.static
 import io.ktor.request.path
+import io.ktor.request.receive
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
-import io.ktor.routing.get
-import io.ktor.routing.post
-import io.ktor.routing.route
-import io.ktor.routing.routing
+import io.ktor.routing.*
 import io.ktor.server.netty.EngineMain
 import org.jetbrains.exposed.sql.Database
 import org.ovo.mockserver.api.router.setApiRoute
@@ -28,6 +28,7 @@ import org.ovo.mockserver.user.dao.UserDaoFacade
 import org.ovo.mockserver.user.dao.UserDaoFacadeImpl
 import org.ovo.mockserver.user.router.setUserRoute
 import org.slf4j.event.Level
+import java.text.DateFormat
 import java.util.*
 
 fun main(args: Array<String>): Unit = EngineMain.main(args)
@@ -66,6 +67,16 @@ fun Application.module() {
         filter { call -> call.request.path().startsWith("/") }
     }
 
+    install(ContentNegotiation) {
+        gson {
+            setDateFormat(DateFormat.LONG)
+            setPrettyPrinting()
+            register(ContentType.Application.Json, GsonConverter())
+        }
+    }
+
+    install(DoubleReceive)
+
     routing {
         static("/users/static") {
             resources("static")
@@ -85,6 +96,42 @@ fun Application.module() {
         }
 
         route("{path...}") {
+            delete("/") {
+                val action = call.parameters.getAll("path")?.joinToString(separator = "/")
+                var response = "{ \"status\": \"FAIL\" }"
+
+                action?.takeIf { it.isNotBlank() }?.let {
+                    val token = call.request.headers["Authorization"].orEmpty()
+                    response = userDao.getResponseByUser(token, action).orEmpty()
+                }
+
+                call.respond(TextContent(response, ContentType.Application.Json))
+
+            }
+            put("/") {
+                val action = call.parameters.getAll("path")?.joinToString(separator = "/")
+                var response = "{ \"status\": \"FAIL\" }"
+
+                action?.takeIf { it.isNotBlank() }?.let {
+                    val token = call.request.headers["Authorization"].orEmpty()
+                    response = userDao.getResponseByUser(token, action).orEmpty()
+                }
+
+                call.respond(TextContent(response, ContentType.Application.Json))
+
+            }
+            get("/") {
+                val action = call.parameters.getAll("path")?.joinToString(separator = "/")
+                var response = "{ \"status\": \"FAIL\" }"
+
+                action?.takeIf { it.isNotBlank() }?.let {
+                    val token = call.request.headers["Authorization"].orEmpty()
+                    response = userDao.getResponseByUser(token, action).orEmpty()
+                }
+
+                call.respond(TextContent(response, ContentType.Application.Json))
+
+            }
             post("/") {
                 val action = call.parameters.getAll("path")?.joinToString(separator = "/")
                 var response = "{ \"status\": \"FAIL\" }"
@@ -95,8 +142,8 @@ fun Application.module() {
                             //val token = call.request.headers["Authorization"].orEmpty()
                             //val token = "user_a||123456||02"
 
-                            val postParameters: Parameters = call.receiveParameters()
-                            val phone = postParameters["mobile"].orEmpty()
+                            val postParameters = call.receive<CustomerLogin>()
+                            val phone = postParameters.mobile
 
                             //val phone = "08131234567890"
                             //Generate new token
@@ -107,24 +154,45 @@ fun Application.module() {
                                 .map(charPool::get)
                                 .joinToString("")
 
-                            userDao.updateTokenByPhone(token, phone)
+                            userDao.updateTokenByPhone(phone, token)
+
+                            userDao.getResponseByUser(token, action)?.let {
+                                response = it.replace("@token", token)
+                            }
 
                             //response = userDao.getResponseByPhone(phone, action).orEmpty()
-                            response = "{\"refId\":\"$token\"}"
+                            //response = "{\"refId\":\"$token\"}"
                         }
                         "v2.0/api/auth/customer/login2FA/verify" -> {
                             val postParameters: Parameters = call.receiveParameters()
                             val refId = postParameters["refId"].orEmpty()
 
-                            userDao.getUserByToken(refId)?.let {
-                                response = "{\"mobile\":\"${it.phone}\",\"email\":\"${it.username}\",\"fullName\":\"${it.name}\"," +
-                                        "\"isEmailVerified\":true,\"isSecurityCodeSet\":true,\"updateAccessToken\":\"$refId\"}"
+                            userDao.getResponseByUser(refId, action)?.let {
+                                response = it.replace("@token", refId)
                             }
+
+                            //userDao.getUserByToken(refId)?.let {
+                            //    response = "{\"mobile\":\"${it.phone}\",\"email\":\"${it.username}\",\"fullName\":\"${it.name}\"," +
+                            //            "\"isEmailVerified\":true,\"isSecurityCodeSet\":true,\"updateAccessToken\":\"$refId\"}"
+                            //}
                         }
                         "v2.0/api/auth/customer/loginSecurityCode/verify" -> {
                             val postParameters: Parameters = call.receiveParameters()
                             val accessToken = postParameters["updateAccessToken"].orEmpty()
 
+                            userDao.getResponseByUser(accessToken, action)?.let {
+                                val now = Calendar.getInstance().timeInMillis / 1000
+                                val expired = Calendar.getInstance().apply {
+                                    set(this.get(Calendar.YEAR) + 1, this.get(Calendar.MONTH), this.get(Calendar.DATE))
+                                }.timeInMillis / 1000
+
+                                response = it.replace("@token", accessToken)
+                                    .replace("@time", now.toString())
+                                    .replace("@expire", expired.toString())
+                                    .replace("@accessToken", accessToken)
+                            }
+
+                            /*
                             userDao.getUserByToken(accessToken)?.let {
                                 val now = Calendar.getInstance().timeInMillis / 1000
                                 val expired = Calendar.getInstance().apply {
@@ -135,6 +203,7 @@ fun Application.module() {
                                         "\"displayMessage\":null,\"email\":\"${it.username}\",\"fullName\":\"${it.name}\",\"isEmailVerified\":true," +
                                         "\"isSecurityCodeSet\":true,\"updateAccessToken\":\"@accessToken\"}"
                             }
+                            */
                         }
                         else -> {
 
@@ -145,6 +214,8 @@ fun Application.module() {
                         }
                     }
                 }
+
+                call.respond(TextContent(response, ContentType.Application.Json))
             }
         }
     }
