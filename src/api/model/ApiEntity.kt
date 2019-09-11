@@ -9,4 +9,5 @@ class ApiEntity(id: EntityID<Int>): IntEntity(id) {
 
     var name by ApisTable.name
     var url by ApisTable.url
+    var method by ApisTable.method
 }

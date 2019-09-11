@@ -102,7 +102,7 @@ fun Application.module() {
 
                 action?.takeIf { it.isNotBlank() }?.let {
                     val token = call.request.headers["Authorization"].orEmpty()
-                    response = userDao.getResponseByUser(token, action).orEmpty()
+                    response = userDao.getResponseByUser(token, action, "DELETE").orEmpty()
                 }
 
                 call.respond(TextContent(response, ContentType.Application.Json))
@@ -114,7 +114,7 @@ fun Application.module() {
 
                 action?.takeIf { it.isNotBlank() }?.let {
                     val token = call.request.headers["Authorization"].orEmpty()
-                    response = userDao.getResponseByUser(token, action).orEmpty()
+                    response = userDao.getResponseByUser(token, action, "PUT").orEmpty()
                 }
 
                 call.respond(TextContent(response, ContentType.Application.Json))
@@ -126,7 +126,7 @@ fun Application.module() {
 
                 action?.takeIf { it.isNotBlank() }?.let {
                     val token = call.request.headers["Authorization"].orEmpty()
-                    response = userDao.getResponseByUser(token, action).orEmpty()
+                    response = userDao.getResponseByUser(token, action, "GET").orEmpty()
                 }
 
                 call.respond(TextContent(response, ContentType.Application.Json))
@@ -139,13 +139,9 @@ fun Application.module() {
                 action?.takeIf { it.isNotBlank() }?.let {
                     when (action) {
                         "v2.0/api/auth/customer/login2FA" -> {
-                            //val token = call.request.headers["Authorization"].orEmpty()
-                            //val token = "user_a||123456||02"
-
                             val postParameters = call.receive<CustomerLogin>()
                             val phone = postParameters.mobile
 
-                            //val phone = "08131234567890"
                             //Generate new token
                             val STRING_LENGTH = 10
                             val charPool: List<Char> = ('a'..'z') + ('A'..'Z') + ('0'..'9')
@@ -156,31 +152,23 @@ fun Application.module() {
 
                             userDao.updateTokenByPhone(phone, token)
 
-                            userDao.getResponseByUser(token, action)?.let {
+                            userDao.getResponseByUser(token, action, "POST")?.let {
                                 response = it.replace("@token", token)
                             }
-
-                            //response = userDao.getResponseByPhone(phone, action).orEmpty()
-                            //response = "{\"refId\":\"$token\"}"
                         }
                         "v2.0/api/auth/customer/login2FA/verify" -> {
-                            val postParameters: Parameters = call.receiveParameters()
-                            val refId = postParameters["refId"].orEmpty()
+                            val postParameters = call.receive<Verify>()
+                            val refId = postParameters.refId
 
-                            userDao.getResponseByUser(refId, action)?.let {
+                            userDao.getResponseByUser(refId, action, "POST")?.let {
                                 response = it.replace("@token", refId)
                             }
-
-                            //userDao.getUserByToken(refId)?.let {
-                            //    response = "{\"mobile\":\"${it.phone}\",\"email\":\"${it.username}\",\"fullName\":\"${it.name}\"," +
-                            //            "\"isEmailVerified\":true,\"isSecurityCodeSet\":true,\"updateAccessToken\":\"$refId\"}"
-                            //}
                         }
                         "v2.0/api/auth/customer/loginSecurityCode/verify" -> {
-                            val postParameters: Parameters = call.receiveParameters()
-                            val accessToken = postParameters["updateAccessToken"].orEmpty()
+                            val postParameters = call.receive<SecurityCode>()
+                            val accessToken = postParameters.updateAccessToken.orEmpty()
 
-                            userDao.getResponseByUser(accessToken, action)?.let {
+                            userDao.getResponseByUser(accessToken, action, "POST")?.let {
                                 val now = Calendar.getInstance().timeInMillis / 1000
                                 val expired = Calendar.getInstance().apply {
                                     set(this.get(Calendar.YEAR) + 1, this.get(Calendar.MONTH), this.get(Calendar.DATE))
@@ -192,24 +180,12 @@ fun Application.module() {
                                     .replace("@accessToken", accessToken)
                             }
 
-                            /*
-                            userDao.getUserByToken(accessToken)?.let {
-                                val now = Calendar.getInstance().timeInMillis / 1000
-                                val expired = Calendar.getInstance().apply {
-                                    set(this.get(Calendar.YEAR) + 1, this.get(Calendar.MONTH), this.get(Calendar.DATE))
-                                }.timeInMillis / 1000
-
-                                response = "{\"token\":\"$accessToken\",\"tokenSeed\":\"$accessToken\",\"timeStamp\":$now,\"tokenSeedExpiredAt\":$expired," +
-                                        "\"displayMessage\":null,\"email\":\"${it.username}\",\"fullName\":\"${it.name}\",\"isEmailVerified\":true," +
-                                        "\"isSecurityCodeSet\":true,\"updateAccessToken\":\"@accessToken\"}"
-                            }
-                            */
                         }
                         else -> {
 
                             val token = call.request.headers["Authorization"].orEmpty()
 
-                            response = userDao.getResponseByUser(token, action).orEmpty()
+                            response = userDao.getResponseByUser(token, action, "POST").orEmpty()
 
                         }
                     }

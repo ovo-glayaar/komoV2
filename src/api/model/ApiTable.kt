@@ -5,6 +5,7 @@ import org.jetbrains.exposed.dao.IntIdTable
 object ApisTable: IntIdTable(){
     val name = varchar("name", 50)
     val url = varchar("url", 500)
+    var method = varchar("method", 20)
 }
 
 object ApiResponsesTable: IntIdTable() {

@@ -23,7 +23,7 @@ interface UserDaoFacade {
     fun getUser(id: Int): UserModel?
     fun getUserByToken(token: String): UserModel?
     fun getAllUsers(): List<UserModel>
-    fun getResponseByUser(token: String, url: String): String?
+    fun getResponseByUser(token: String, url: String, method: String): String?
     fun getResponseByPhone(phone: String, url: String): String?
     fun updateTokenByPhone(phone: String, token: String)
 }
@@ -31,13 +31,13 @@ interface UserDaoFacade {
 class UserDaoFacadeImpl(private val database: Database,
                         private val apiDaoFacade: ApiDaoFacade) : UserDaoFacade {
     
-    override fun getResponseByUser(token: String, url: String): String? = transaction(database) {
+    override fun getResponseByUser(token: String, url: String, method: String): String? = transaction(database) {
         val result = UsersTable.join(UserTokensTable, JoinType.INNER, additionalConstraint = {UsersTable.id eq UserTokensTable.user})
                 .join(UserApiStatesTable, JoinType.INNER, additionalConstraint = {UsersTable.id eq UserApiStatesTable.user})
                 .join(ApiResponsesTable, JoinType.INNER, additionalConstraint = {UserApiStatesTable.apiresponse eq ApiResponsesTable.id})
-                .join(ApisTable, JoinType.INNER, additionalConstraint = {ApiResponsesTable.api eq ApisTable.id})
+                .join(ApisTable, JoinType.INNER, additionalConstraint = {ApiResponsesTable.api eq ApisTable.id and (ApisTable.method eq method)})
                 .slice(UserTokensTable.token, ApisTable.url, ApiResponsesTable.response)
-                .select { UserTokensTable.token eq token and (ApisTable.url eq url) }.firstOrNull()
+                .select { UserTokensTable.token eq token and (ApisTable.url eq url)}.firstOrNull()
 
         if(result != null) result[ApiResponsesTable.response] else null
     }
